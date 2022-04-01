@@ -1,11 +1,11 @@
 package com.example.webpos.db;
 
-import com.example.webpos.model.Cart;
 import com.example.webpos.model.Product;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Repository;
 
 import java.io.IOException;
@@ -20,10 +20,10 @@ public class JD implements PosDB {
     private List<Product> products = null;
 
     @Override
+    @Cacheable(cacheNames = "products")
     public List<Product> getProducts() {
         try {
-            if (products == null)
-                products = parseJD("Java");
+            if (products == null) products = parseJD("Java");
         } catch (IOException e) {
             products = new ArrayList<>();
         }
@@ -31,6 +31,7 @@ public class JD implements PosDB {
     }
 
     @Override
+    @Cacheable(cacheNames = "product", key = "#productId")
     public Product getProduct(String productId) {
         for (Product p : getProducts()) {
             if (p.getId().equals(productId)) {
@@ -53,15 +54,13 @@ public class JD implements PosDB {
         List<Product> list = new ArrayList<>();
 
         //获取元素的内容
-        for (Element el : elements
-        ) {
+        for (Element el : elements) {
             //关于图片特别多的网站，所有图片都是延迟加载的
             String id = el.attr("data-spu");
             String img = "https:".concat(el.getElementsByTag("img").eq(0).attr("data-lazy-img"));
             String price = el.getElementsByAttribute("data-price").text();
             String title = el.getElementsByClass("p-name").eq(0).text();
-            if (title.indexOf("，") >= 0)
-                title = title.substring(0, title.indexOf("，"));
+            if (title.contains("，")) title = title.substring(0, title.indexOf("，"));
 
             Product product = new Product(id, title, Double.parseDouble(price), img);
 
